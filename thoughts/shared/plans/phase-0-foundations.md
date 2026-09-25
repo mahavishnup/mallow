@@ -44,51 +44,51 @@ return [
 ];
 ```
 
-- [ ] Create file. Access everywhere as `config('billing.…')` — never hardcode these numbers again.
+- [x] Create file. Access everywhere as `config('billing.…')` — never hardcode these numbers again.
 
 ### 2.2 Migrations (one file per table, conventional names)
 
-- [ ] **`plans`** (Plan §3.2): `id`, `merchant_id` (FK → teams, cascade), `name`, `base_price decimal(10,2)`, `included_units unsignedBigInteger`, `overage_rate decimal(10,4)`, `billing_cycle_days unsignedSmallInteger default 30`, `is_active boolean default true`, timestamps. Index `(merchant_id)`.
-- [ ] **`customers`**: `id`, `merchant_id` FK, `name`, `email`, timestamps. **Unique `(merchant_id, email)`** (Plan: "unique per merchant").
-- [ ] **`subscriptions`**: `id`, `customer_id` FK, `plan_id` FK, `starts_at date`, `ends_at date nullable`, `status` string + check constraint (`active`,`canceled` — store enum values; use `$table->string('status')->default(...)` + explicit check if portable), timestamps. Indexes: `(customer_id)`, `(merchant_id, status)` — note `merchant_id` is denormalized **here only for the dashboard lookup**; write it on create (source of truth is `customers.merchant_id`).
-- [ ] **`subscription_segments`** (Plan §3.2): `id`, `subscription_id` FK, `plan_id` FK, `starts_at date`, `ends_at date` (exclusive bound, Plan §4.1), timestamps. Index `(subscription_id, starts_at)`. Add a **check `starts_at < ends_at`** if portable.
-- [ ] **`api_keys`** (D0.2): `id`, `merchant_id` FK, `name`, `key_hash string unique` (sha-256), `last_used_at timestamp nullable`, timestamps.
-- [ ] Verify `php artisan migrate` runs on **both** sqlite (tests) and the configured local DB.
+- [x] **`plans`** (Plan §3.2): `id`, `merchant_id` (FK → teams, cascade), `name`, `base_price decimal(10,2)`, `included_units unsignedBigInteger`, `overage_rate decimal(10,4)`, `billing_cycle_days unsignedSmallInteger default 30`, `is_active boolean default true`, timestamps. Index `(merchant_id)`.
+- [x] **`customers`**: `id`, `merchant_id` FK, `name`, `email`, timestamps. **Unique `(merchant_id, email)`** (Plan: "unique per merchant").
+- [x] **`subscriptions`**: `id`, `customer_id` FK, `plan_id` FK, `starts_at date`, `ends_at date nullable`, `status` string + check constraint (`active`,`canceled` — store enum values; use `$table->string('status')->default(...)` + explicit check if portable), timestamps. Indexes: `(customer_id)`, `(merchant_id, status)` — note `merchant_id` is denormalized **here only for the dashboard lookup**; write it on create (source of truth is `customers.merchant_id`). Q0.2 resolved: **merchant_id added**, written on create.
+- [x] **`subscription_segments`** (Plan §3.2): `id`, `subscription_id` FK, `plan_id` FK, `starts_at date`, `ends_at date` (exclusive bound, Plan §4.1), timestamps. Index `(subscription_id, starts_at)`. Add a **check `starts_at < ends_at`** if portable. — Note: schema builder has no portable CHECK support (SQLite can't ALTER ADD CONSTRAINT); enforced at application level in Phase 3 actions instead.
+- [x] **`api_keys`** (D0.2): `id`, `merchant_id` FK, `name`, `key_hash string unique` (sha-256), `last_used_at timestamp nullable`, timestamps.
+- [x] Verify `php artisan migrate` runs on **both** sqlite (tests) and the configured local DB. — Q0.1 resolved: `.env` → PostgreSQL `mallow` + Redis; migrations ran green on both.
 
 ### 2.3 Enums
 
-- [ ] `app/Enums/SubscriptionStatus.php`: `case Active = 'active'; case Canceled = 'canceled';` (string-backed; TitleCase case names per PHP rules).
-- [ ] `app/Enums/InvoiceStatus.php`: `case Draft; case Finalized; case Paid;` (Phase 3 uses it; migration for invoices lands then — enum file now is fine and harmless).
+- [x] `app/Enums/SubscriptionStatus.php`: `case Active = 'active'; case Canceled = 'canceled';` (string-backed; TitleCase case names per PHP rules).
+- [x] `app/Enums/InvoiceStatus.php`: `case Draft; case Finalized; case Paid;` (Phase 3 uses it; migration for invoices lands then — enum file now is fine and harmless).
 
 ### 2.4 Models (follow `app/Models/Team.php` conventions: `final`, `#[Fillable]`, `@property` PHPDoc, relation generics)
 
-- [ ] `Plan` — relations: `belongsTo(Team, 'merchant_id')` named `merchant()`. Casts: `base_price => decimal:2`, `overage_rate => decimal:4`, `is_active => bool`. Add `public function pricing(): object` later (Phase 4 cache) — **not now**.
-- [ ] `Customer` — `merchant(): BelongsTo`, unique-per-merchant email enforced by DB. Relations for later phases may be added when those models exist.
-- [ ] `Subscription` — `customer()`, `plan()`, `segments(): HasMany` (ordered by `starts_at`), `merchant()` (via denormalized `merchant_id`). Cast `status => SubscriptionStatus`.
-- [ ] `SubscriptionSegment` — `subscription()`, `plan()`. Date casts on `starts_at`/`ends_at`.
-- [ ] `ApiKey` — `merchant()`, `last_used_at` cast.
+- [x] `Plan` — relations: `belongsTo(Team, 'merchant_id')` named `merchant()`. Casts: `base_price => decimal:2`, `overage_rate => decimal:4`, `is_active => bool`. Add `public function pricing(): object` later (Phase 4 cache) — **not now**.
+- [x] `Customer` — `merchant(): BelongsTo`, unique-per-merchant email enforced by DB. Relations for later phases may be added when those models exist.
+- [x] `Subscription` — `customer()`, `plan()`, `segments(): HasMany` (ordered by `starts_at`), `merchant()` (via denormalized `merchant_id`). Cast `status => SubscriptionStatus`.
+- [x] `SubscriptionSegment` — `subscription()`, `plan()`. Date casts on `starts_at`/`ends_at`.
+- [x] `ApiKey` — `merchant()`, `last_used_at` cast. (`key_hash` hidden from serialization.)
 
 ### 2.5 Factories (one per model, `php artisan make:model …` flags or `make:factory`)
 
-- [ ] `PlanFactory`: sensible defaults — `base_price: 29.00`, `included_units: 100_000`, `overage_rate: 0.0025`, `billing_cycle_days: 30`, `is_active: true`. Add states: `inactive()`, `withPricing(float $base, int $units, float $rate)`.
-- [ ] `CustomerFactory`, `SubscriptionFactory` (state `active()` sets `starts_at` today-ish, status active), `SubscriptionSegmentFactory`, `ApiKeyFactory`.
-- [ ] Ensure `DatabaseSeeder` still runs green (`php artisan db:seed --no-interaction` on sqlite if needed) — factories must be creatable standalone (`Model::factory()->create()`).
+- [x] `PlanFactory`: sensible defaults — `base_price: 29.00`, `included_units: 100_000`, `overage_rate: 0.0025`, `billing_cycle_days: 30`, `is_active: true`. Add states: `inactive()`, `withPricing(float $base, int $units, float $rate)`.
+- [x] `CustomerFactory`, `SubscriptionFactory` (state `active()` sets `starts_at` today-ish, status active), `SubscriptionSegmentFactory`, `ApiKeyFactory`. — Note: SubscriptionFactory resolves denormalized `merchant_id` from its customer.
+- [x] Ensure `DatabaseSeeder` still runs green (`php artisan db:seed --no-interaction` on sqlite if needed) — factories must be creatable standalone (`Model::factory()->create()`). — Proven by `tests/Feature/FactoriesTest.php` (6 tests / 20 assertions, sqlite) + `migrate:fresh --seed` on PostgreSQL.
 
 ### 2.6 Hygiene
 
-- [ ] `vendor/bin/pint --dirty --format agent`
-- [ ] `vendor/bin/phpstan analyse` — clean baseline (level per `phpstan.neon`).
+- [x] `vendor/bin/pint --dirty --format agent`
+- [x] `vendor/bin/phpstan analyse` — clean baseline (level per `phpstan.neon`). — Also fixed a pre-existing PHPDoc error in `app/Concerns/ProfileValidationRules.php` (`Unique` rule implements `Stringable`, not `ValidationRule`).
 
 ---
 
 ## 3. Acceptance Criteria
 
-- [ ] `php artisan migrate` clean on sqlite + local DB; `migrate:fresh` works.
-- [ ] `php artisan db:seed` green; each factory creates standalone.
-- [ ] All five migrations exist with the Plan §3.2 columns/indexes (compare against the plan tables one final time).
-- [ ] Enums exist and are string/int-backed correctly.
-- [ ] Pint + PHPStan clean.
-- [ ] No usage/billing/invoice tables yet (scope discipline).
+- [x] `php artisan migrate` clean on sqlite + local DB; `migrate:fresh` works.
+- [x] `php artisan db:seed` green; each factory creates standalone.
+- [x] All five migrations exist with the Plan §3.2 columns/indexes (compare against the plan tables one final time).
+- [x] Enums exist and are string/int-backed correctly.
+- [x] Pint + PHPStan clean.
+- [x] No usage/billing/invoice tables yet (scope discipline).
 
 ## 4. Open Questions (resolve before or during the phase)
 
