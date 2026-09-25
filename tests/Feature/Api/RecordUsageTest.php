@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\ApiKey;
 use App\Models\Customer;
+use App\Models\DailyUsage;
 use App\Models\Subscription;
 use App\Models\Team;
 use App\Models\UsageEvent;
@@ -58,7 +59,7 @@ function recordUsage(array $payload, ?string $plainKey = null): TestResponse
     ]);
 }
 
-test('valid request stores an un-aggregated usage event', function (): void {
+test('valid request stores a usage event and aggregates it via the queued job', function (): void {
     recordUsage($this->payload)
         ->assertCreated()
         ->assertJson(fn (AssertableJson $json) => $json
@@ -66,8 +67,11 @@ test('valid request stores an un-aggregated usage event', function (): void {
             ->where('data.quantity', 250)
             ->etc());
 
+    // QUEUE_CONNECTION=sync in tests: the afterCommit aggregation job has
+    // already run, so the watermark advanced and daily_usage is populated.
     expect(UsageEvent::query()->count())->toBe(1)
-        ->and(UsageEvent::query()->first()->aggregated_at)->toBeNull();
+        ->and(UsageEvent::query()->first()->aggregated_at)->not->toBeNull()
+        ->and(DailyUsage::query()->where('customer_id', $this->customer->id)->sole()->total_quantity)->toBe(250);
 });
 
 test('identical retry returns duplicate without a second row', function (): void {

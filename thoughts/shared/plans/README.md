@@ -22,7 +22,7 @@ flowchart TD
 | --- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----- | ------ |
 | 0   | [phase-0-foundations.md](phase-0-foundations.md)                 | Config + core domain schema (plans, customers, subscriptions, segments) + models/factories        | 0.5 d | ✅     |
 | 1   | [phase-1-usage-ingestion.md](phase-1-usage-ingestion.md)         | Idempotent `POST /api/usage` with API-key auth, rate limiting, tenant checks                      | 0.5 d | ✅     |
-| 2   | [phase-2-aggregation.md](phase-2-aggregation.md)                 | Queued, chunked, retry-safe `usage_events` → `daily_usage` aggregation                            | 0.5 d | ⬜     |
+| 2   | [phase-2-aggregation.md](phase-2-aggregation.md)                 | Queued, chunked, retry-safe `usage_events` → `daily_usage` aggregation                            | 0.5 d | ✅     |
 | 3   | [phase-3-billing-engine.md](phase-3-billing-engine.md)           | Proration + overage + segmented billing → invoices; plan-change handling; supporting CRUD         | 1 d   | ⬜     |
 | 4   | [phase-4-cache-dashboard-api.md](phase-4-cache-dashboard-api.md) | `PlanPricingCache` with write-through invalidation + `DashboardService` + dashboard JSON endpoint | 0.5 d | ⬜     |
 | 5   | [phase-5-frontend.md](phase-5-frontend.md)                       | Team-scoped Inertia dashboard: top-5 usage, projected overage, churn risk                         | 0.5 d | ⬜     |

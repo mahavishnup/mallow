@@ -26,13 +26,13 @@
 
 ### 2.1 Migration — `daily_usage` (Plan §3.2)
 
-- [ ] Columns: `id`, `merchant_id` FK, `customer_id` FK, `use_date`… **name it `usage_date date`**, `total_quantity unsignedBigInteger`, `event_count unsignedInteger`, timestamps.
-- [ ] **Unique `(customer_id, usage_date)`** (upsert target). Index `(merchant_id, usage_date)`.
+- [x] Columns: `id`, `merchant_id` FK, `customer_id` FK, `use_date`… **name it `usage_date date`**, `total_quantity unsignedBigInteger`, `event_count unsignedInteger`, timestamps.
+- [x] **Unique `(customer_id, usage_date)`** (upsert target). Index `(merchant_id, usage_date)`.
 
 ### 2.2 Models
 
-- [ ] `UsageEvent` — casts `usage_date: date`, `aggregated_at: datetime`; relations `customer()`, `merchant()`. Scope `unaggregated()` (`whereNull('aggregated_at')`).
-- [ ] `DailyUsage` — casts `usage_date: date`; relations `customer()`, `merchant()`. Factory with state for a given customer/date/qty.
+- [x] `UsageEvent` — casts `usage_date: date`, `aggregated_at: datetime`; relations `customer()`, `merchant()`. Scope `unaggregated()` (`whereNull('aggregated_at')`).
+- [x] `DailyUsage` — casts `usage_date: date`; relations `customer()`, `merchant()`. Factory with state for a given customer/date/qty. — Note: explicit `protected $table = 'daily_usage'` (Eloquent would pluralize to `daily_usages`).
 
 ### 2.3 Action — `app/Actions/Usage/AggregateDailyUsageAction.php`
 
@@ -52,43 +52,43 @@ UsageEvent::query()
     });
 ```
 
-- [ ] Use `upsert()` with raw increment expression, or `INSERT … ON CONFLICT (customer_id, usage_date) DO UPDATE SET total_quantity = daily_usage.total_quantity + excluded.total_quantity …` — **verify the expression syntax works identically on sqlite and PostgreSQL**; if not, use portable per-row `DailyUsage::updateOrCreate` + lock. Prefer the single-statement upsert for atomicity under duplicate dispatch (Plan §6 "row-level locking on upsert").
-- [ ] Increment math must derive Δ from the chunk only. The watermark advances **in the same transaction** as each chunk's upsert (Plan §6 retry-safety).
-- [ ] Concurrency: two workers picking the same rows — the upsert `ON CONFLICT DO UPDATE` with `+ excluded.` increment keeps totals correct; marking `aggregated_at` uses `whereNull('aggregated_at')` guard on update so events are counted once.
-- [ ] Alternative (rejected): naive `chunk()` with offset — violates Plan §6 chunkById requirement.
-- [ ] `AggregateDailyUsageAction` is callable from a scheduled command or tinker for backfills.
+- [x] Use `upsert()` with raw increment expression, or `INSERT … ON CONFLICT (customer_id, usage_date) DO UPDATE SET total_quantity = daily_usage.total_quantity + excluded.total_quantity …` — **verify the expression syntax works identically on sqlite and PostgreSQL**; if not, use portable per-row `DailyUsage::updateOrCreate` + lock. Prefer the single-statement upsert for atomicity under duplicate dispatch (Plan §6 "row-level locking on upsert"). — Verified both grammars compile string-keyed raw expressions in the update clause; insert values carry `created_at`/`updated_at` so fresh rows get timestamps.
+- [x] Increment math must derive Δ from the chunk only. The watermark advances **in the same transaction** as each chunk's upsert (Plan §6 retry-safety).
+- [x] Concurrency: two workers picking the same rows — the upsert `ON CONFLICT DO UPDATE` with `+ excluded.` increment keeps totals correct; marking `aggregated_at` uses `whereNull('aggregated_at')` guard on update so events are counted once.
+- [x] Alternative (rejected): naive `chunk()` with offset — violates Plan §6 chunkById requirement.
+- [x] `AggregateDailyUsageAction` is callable from a scheduled command or tinker for backfills.
 
 ### 2.4 Job — `app/Jobs/AggregateDailyUsageJob.php`
 
-- [ ] Payload: optionally scoped to `(customer_id, usage_date)` when dispatched from ingestion (aggregates just that day — small fast job), or unscoped (full sweep) when run scheduled/manual. Constructor: `public function __construct(public ?int $customerId = null, public ?string $usageDate = null)`.
-- [ ] `handle(AggregateDailyUsageAction $action): void` → delegates.
-- [ ] Queue: `default`. Backoff/extries: `$tries = 3`, backoff 10s.
-- [ ] Dispatch wiring (Phase 1 TODO): in `RecordUsageAction` on successful insert → `AggregateDailyUsageJob::dispatch(customerId, usage_date)->afterCommit()`. Tests use `QUEUE_CONNECTION=sync` so it runs inline — **assert `daily_usage` updated after POST** in the Phase 2 tests (moves one Phase 1 assertion forward; keep the Phase 1 duplicate/no-double-count tests intact).
-- [ ] Ingestion dispatch decision: per-day scoped dispatch keeps jobs small and enables parallelism per (customer, day); full sweep remains available. _(Decision D2.1)_
+- [x] Payload: optionally scoped to `(customer_id, usage_date)` when dispatched from ingestion (aggregates just that day — small fast job), or unscoped (full sweep) when run scheduled/manual. Constructor: `public function __construct(public ?int $customerId = null, public ?string $usageDate = null)`.
+- [x] `handle(AggregateDailyUsageAction $action): void` → delegates.
+- [x] Queue: `default`. Backoff/extries: `$tries = 3`, backoff 10s. — Uses the modern single `Illuminate\Foundation\Queue\Queueable` trait.
+- [x] Dispatch wiring (Phase 1 TODO): in `RecordUsageAction` on successful insert → `AggregateDailyUsageJob::dispatch(customerId, usage_date)->afterCommit()`. Tests use `QUEUE_CONNECTION=sync` so it runs inline — **assert `daily_usage` updated after POST** in the Phase 2 tests (moves one Phase 1 assertion forward; keep the Phase 1 duplicate/no-double-count tests intact). — Done: Phase 1 test updated to assert aggregation ran; duplicate tests unchanged and still green.
+- [x] Ingestion dispatch decision: per-day scoped dispatch keeps jobs small and enables parallelism per (customer, day); full sweep remains available. _(Decision D2.1)_
 
 ### 2.5 Queue config & ops
 
-- [ ] `.env.example`: document `QUEUE_CONNECTION=database` as default local (C0.8: Redis if available: `redis` + `CACHE_STORE=redis`); README details land in Phase 6.
-- [ ] Schedule optional safety-net sweep in `routes/console.php`: `Schedule::daily()->at('02:00')->job(new AggregateDailyUsageJob)` — catches any unmarked stragglers (Plan §6 retry story).
+- [x] `.env.example`: document `QUEUE_CONNECTION=database` as default local (C0.8: Redis if available: `redis` + `CACHE_STORE=redis`); README details land in Phase 6. — Already `database` in `.env.example`; local `.env` uses `redis`.
+- [x] Schedule optional safety-net sweep in `routes/console.php`: `Schedule::daily()->at('02:00')->job(new AggregateDailyUsageJob)` — catches any unmarked stragglers (Plan §6 retry story).
 
 ### 2.6 Tests — `tests/Feature/Aggregation/AggregationTest.php`
 
 Cover Plan §10 "Aggregation" rows:
 
-- [ ] single event → correct daily total + event_count 1
-- [ ] multiple events same customer/day → summed (incl. from separate POSTs)
-- [ ] multiple customers → isolated totals (no cross-contamination)
-- [ ] chunk boundary: create 2× chunk-size+ε events (override `config(['billing.aggregation.chunk_size' => 5])`), run action → totals correct across chunks
-- [ ] idempotent re-run: run action twice → totals unchanged (watermark works)
-- [ ] duplicate POST (same idempotency key, via API) → no double count in `daily_usage`
-- [ ] concurrent-marking guard: manually re-mark an event's `aggregated_at` null and re-run → only that event's Δ re-applied **or** skip if already counted — assert totals remain consistent with the guard semantics you implement (document in test comment)
+- [x] single event → correct daily total + event_count 1
+- [x] multiple events same customer/day → summed (incl. from separate POSTs)
+- [x] multiple customers → isolated totals (no cross-contamination)
+- [x] chunk boundary: create 2× chunk-size+ε events (override `config(['billing.aggregation.chunk_size' => 5])`), run action → totals correct across chunks
+- [x] idempotent re-run: run action twice → totals unchanged (watermark works)
+- [x] duplicate POST (same idempotency key, via API) → no double count in `daily_usage`
+- [x] concurrent-marking guard: manually re-mark an event's `aggregated_at` null and re-run → only that event's Δ re-applied **or** skip if already counted — assert totals remain consistent with the guard semantics you implement (document in test comment) — Semantics: a manual watermark reset re-counts (marker is source of truth); documented in the test.
 
 ## 3. Acceptance Criteria
 
-- [ ] Re-running `AggregateDailyUsageAction` any number of times never changes `daily_usage` totals (watermark proof).
-- [ ] Chunked processing handles >chunk-size events correctly.
-- [ ] POST /api/usage → worker (sync in tests) → `daily_usage` row correct; duplicate POST leaves it unchanged.
-- [ ] Pint + PHPStan clean; tests green.
+- [x] Re-running `AggregateDailyUsageAction` any number of times never changes `daily_usage` totals (watermark proof).
+- [x] Chunked processing handles >chunk-size events correctly.
+- [x] POST /api/usage → worker (sync in tests) → `daily_usage` row correct; duplicate POST leaves it unchanged.
+- [x] Pint + PHPStan clean; tests green. — 10/10 phase tests; full suite 123/123 (438 assertions).
 
 ## 4. Notes & Links
 

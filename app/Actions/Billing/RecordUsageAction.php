@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Billing;
 
 use App\Http\Requests\Api\RecordUsageRequest;
+use App\Jobs\AggregateDailyUsageJob;
 use App\Models\Customer;
 use App\Models\Team;
 use App\Models\UsageEvent;
@@ -66,7 +67,10 @@ final class RecordUsageAction
             throw $exception;
         }
 
-        // Phase 2: dispatch AggregateDailyUsageJob (afterCommit).
+        // Aggregate asynchronously — never in the request path (Plan §5.1).
+        // afterCommit keeps the job from racing the insert's transaction.
+        AggregateDailyUsageJob::dispatch($customer->id, $usageDate->toDateString())->afterCommit();
+
         return ['stored' => true, 'event' => $event];
     }
 
