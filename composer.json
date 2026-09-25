@@ -60,7 +60,8 @@
             "@php artisan dev"
         ],
         "lint": [
-            "pint --parallel"
+            "pint --parallel",
+            "npm run check:fix"
         ],
         "lint:check": [
             "pint --parallel --test"
