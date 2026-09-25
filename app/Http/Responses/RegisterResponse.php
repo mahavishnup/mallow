@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Responses;
 
 use App\Http\Responses\Concerns\RedirectsToCurrentTeam;
@@ -8,7 +10,7 @@ use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
 use Laravel\Fortify\Fortify;
 use Symfony\Component\HttpFoundation\Response;
 
-class RegisterResponse implements RegisterResponseContract
+final class RegisterResponse implements RegisterResponseContract
 {
     use RedirectsToCurrentTeam;
 

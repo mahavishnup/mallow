@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Enums\TeamRole;
 use App\Models\Team;
 use App\Models\User;
@@ -27,7 +29,7 @@ test('teams can be created', function () {
     $response->assertRedirect();
 
     $this->assertDatabaseHas('teams', [
-        'name' => 'Test Team',
+        'name'        => 'Test Team',
         'is_personal' => false,
     ]);
 });
@@ -63,10 +65,11 @@ test('the team edit page can be rendered', function () {
 
     $response
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('teams/edit')
-            ->where('members.0.role', TeamRole::Owner->value)
-            ->where('members.0.role_label', TeamRole::Owner->label()),
+        ->assertInertia(
+            fn (Assert $page) => $page
+                ->component('teams/edit')
+                ->where('members.0.role', TeamRole::Owner->value)
+                ->where('members.0.role_label', TeamRole::Owner->label()),
         );
 });
 
@@ -85,7 +88,7 @@ test('teams can be updated by owners', function () {
     $response->assertRedirect(route('teams.edit', $team->fresh()));
 
     $this->assertDatabaseHas('teams', [
-        'id' => $team->id,
+        'id'   => $team->id,
         'name' => 'Updated Name',
     ]);
 });
@@ -141,7 +144,7 @@ test('team deletion requires name confirmation', function () {
     $response->assertSessionHasErrors('name');
 
     $this->assertDatabaseHas('teams', [
-        'id' => $team->id,
+        'id'         => $team->id,
         'deleted_at' => null,
     ]);
 });
@@ -340,7 +343,7 @@ test('personal teams cannot be deleted', function () {
     $response->assertForbidden();
 
     $this->assertDatabaseHas('teams', [
-        'id' => $personalTeam->id,
+        'id'         => $personalTeam->id,
         'deleted_at' => null,
     ]);
 });

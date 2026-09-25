@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Teams;
 
 use App\Models\Team;
@@ -9,7 +11,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Validator;
 
-class DeleteTeamRequest extends FormRequest
+final class DeleteTeamRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

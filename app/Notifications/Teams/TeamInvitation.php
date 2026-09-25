@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Notifications\Teams;
 
 use App\Models\TeamInvitation as TeamInvitationModel;
@@ -8,7 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class TeamInvitation extends Notification implements ShouldQueue
+final class TeamInvitation extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -42,7 +44,7 @@ class TeamInvitation extends Notification implements ShouldQueue
             ->subject(__("You've been invited to join :teamName", ['teamName' => $team->name]))
             ->line(__(':inviterName has invited you to join the :teamName team.', [
                 'inviterName' => $inviter->name,
-                'teamName' => $team->name,
+                'teamName'    => $team->name,
             ]))
             ->line(__('Log in and visit your dashboard to accept or decline this invitation.'))
             ->action(
@@ -60,9 +62,9 @@ class TeamInvitation extends Notification implements ShouldQueue
     {
         return [
             'invitation_id' => $this->invitation->id,
-            'team_id' => $this->invitation->team_id,
-            'team_name' => $this->invitation->team->name,
-            'role' => $this->invitation->role->value,
+            'team_id'       => $this->invitation->team_id,
+            'team_name'     => $this->invitation->team->name,
+            'role'          => $this->invitation->role->value,
         ];
     }
 }

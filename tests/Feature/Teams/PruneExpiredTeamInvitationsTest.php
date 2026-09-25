@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Enums\TeamRole;
 use App\Models\Team;
 use App\Models\TeamInvitation;
@@ -14,17 +16,17 @@ test('expired invitations are deleted by the scheduled cleanup', function () {
     $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
 
     $expiredInvitation = TeamInvitation::factory()->expired()->create([
-        'team_id' => $team->id,
+        'team_id'    => $team->id,
         'invited_by' => $owner->id,
     ]);
 
     $unexpiredInvitation = TeamInvitation::factory()->expiresIn(1)->create([
-        'team_id' => $team->id,
+        'team_id'    => $team->id,
         'invited_by' => $owner->id,
     ]);
 
     $invitationWithoutExpiration = TeamInvitation::factory()->create([
-        'team_id' => $team->id,
+        'team_id'    => $team->id,
         'invited_by' => $owner->id,
     ]);
 

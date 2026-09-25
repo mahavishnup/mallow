@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Middleware;
 
 use App\Enums\TeamRole;
@@ -9,7 +11,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureTeamMembership
+final class EnsureTeamMembership
 {
     /**
      * Handle an incoming request.
@@ -34,7 +36,7 @@ class EnsureTeamMembership
     /**
      * Ensure the given user has at least the given role, if applicable.
      */
-    protected function ensureTeamMemberHasRequiredRole(User $user, Team $team, ?string $minimumRole): void
+    private function ensureTeamMemberHasRequiredRole(User $user, Team $team, ?string $minimumRole): void
     {
         if ($minimumRole === null) {
             return;
@@ -55,7 +57,7 @@ class EnsureTeamMembership
     /**
      * Get the team associated with the request.
      */
-    protected function team(Request $request): ?Team
+    private function team(Request $request): ?Team
     {
         $team = $request->route('current_team') ?? $request->route('team');
 

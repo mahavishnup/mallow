@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Enums\TeamRole;
 use App\Models\Team;
 use App\Models\TeamInvitation;
@@ -33,8 +35,8 @@ test('dashboard includes pending invitations for the authenticated user', functi
     $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
 
     $invitation = TeamInvitation::factory()->create([
-        'team_id' => $team->id,
-        'email' => 'invited@example.com',
+        'team_id'    => $team->id,
+        'email'      => 'invited@example.com',
         'invited_by' => $owner->id,
     ]);
 
@@ -43,14 +45,15 @@ test('dashboard includes pending invitations for the authenticated user', functi
         ->get(route('dashboard'));
 
     $response->assertOk();
-    $response->assertInertia(fn (Assert $page) => $page
-        ->component('dashboard')
-        ->has('pendingInvitations', 1)
-        ->where('pendingInvitations.0.code', $invitation->code)
-        ->where('pendingInvitations.0.inviterName', 'Taylor Otwell')
-        ->where('pendingInvitations.0.team.name', 'Laravel Team')
-        ->where('pendingInvitations.0.team.slug', $team->slug)
-        ->missing('pendingInvitations.0.teamName'),
+    $response->assertInertia(
+        fn (Assert $page) => $page
+            ->component('dashboard')
+            ->has('pendingInvitations', 1)
+            ->where('pendingInvitations.0.code', $invitation->code)
+            ->where('pendingInvitations.0.inviterName', 'Taylor Otwell')
+            ->where('pendingInvitations.0.team.name', 'Laravel Team')
+            ->where('pendingInvitations.0.team.slug', $team->slug)
+            ->missing('pendingInvitations.0.teamName'),
     );
 });
 
@@ -62,8 +65,8 @@ test('dashboard does not include accepted invitations', function () {
     $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
 
     TeamInvitation::factory()->accepted()->create([
-        'team_id' => $team->id,
-        'email' => 'invited@example.com',
+        'team_id'    => $team->id,
+        'email'      => 'invited@example.com',
         'invited_by' => $owner->id,
     ]);
 
@@ -72,9 +75,10 @@ test('dashboard does not include accepted invitations', function () {
         ->get(route('dashboard'));
 
     $response->assertOk();
-    $response->assertInertia(fn (Assert $page) => $page
-        ->component('dashboard')
-        ->has('pendingInvitations', 0),
+    $response->assertInertia(
+        fn (Assert $page) => $page
+            ->component('dashboard')
+            ->has('pendingInvitations', 0),
     );
 });
 
@@ -86,8 +90,8 @@ test('dashboard excludes expired invitations without deleting them', function ()
     $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
 
     $invitation = TeamInvitation::factory()->expired()->create([
-        'team_id' => $team->id,
-        'email' => 'invited@example.com',
+        'team_id'    => $team->id,
+        'email'      => 'invited@example.com',
         'invited_by' => $owner->id,
     ]);
 
@@ -96,9 +100,10 @@ test('dashboard excludes expired invitations without deleting them', function ()
         ->get(route('dashboard'));
 
     $response->assertOk();
-    $response->assertInertia(fn (Assert $page) => $page
-        ->component('dashboard')
-        ->has('pendingInvitations', 0),
+    $response->assertInertia(
+        fn (Assert $page) => $page
+            ->component('dashboard')
+            ->has('pendingInvitations', 0),
     );
 
     $this->assertDatabaseHas('team_invitations', [
@@ -114,8 +119,8 @@ test('dashboard does not include or delete other users invitations', function ()
     $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
 
     $invitation = TeamInvitation::factory()->expired()->create([
-        'team_id' => $team->id,
-        'email' => 'someone@example.com',
+        'team_id'    => $team->id,
+        'email'      => 'someone@example.com',
         'invited_by' => $owner->id,
     ]);
 
@@ -124,9 +129,10 @@ test('dashboard does not include or delete other users invitations', function ()
         ->get(route('dashboard'));
 
     $response->assertOk();
-    $response->assertInertia(fn (Assert $page) => $page
-        ->component('dashboard')
-        ->has('pendingInvitations', 0),
+    $response->assertInertia(
+        fn (Assert $page) => $page
+            ->component('dashboard')
+            ->has('pendingInvitations', 0),
     );
 
     $this->assertDatabaseHas('team_invitations', [

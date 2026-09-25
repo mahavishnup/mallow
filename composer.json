@@ -19,6 +19,7 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.24",
+        "fruitcake/laravel-debugbar": "^4.4",
         "larastan/larastan": "^3.9",
         "laravel/boost": "^2.2",
         "laravel/pail": "^1.2.5",
@@ -35,7 +36,10 @@
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
-        }
+        },
+        "files": [
+            "app/Helpers/helpers.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {
@@ -73,8 +77,7 @@
         "test": [
             "@php artisan config:clear --ansi",
             "@lint:check",
-            "@types:check",
-            "@php artisan test"
+            "@php artisan test --parallel --ansi"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

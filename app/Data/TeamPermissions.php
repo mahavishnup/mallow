@@ -1,8 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Data;
 
-readonly class TeamPermissions
+final readonly class TeamPermissions
 {
     public function __construct(
         public bool $canUpdateTeam,

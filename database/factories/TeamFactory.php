@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Models\Team;
@@ -9,7 +11,7 @@ use Illuminate\Support\Str;
 /**
  * @extends Factory<Team>
  */
-class TeamFactory extends Factory
+final class TeamFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -21,8 +23,8 @@ class TeamFactory extends Factory
         $name = fake()->unique()->company();
 
         return [
-            'name' => $name,
-            'slug' => Str::slug($name),
+            'name'        => $name,
+            'slug'        => Str::slug($name),
             'is_personal' => false,
         ];
     }

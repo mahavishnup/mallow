@@ -1,8 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Data;
 
-readonly class UserTeam
+final readonly class UserTeam
 {
     public function __construct(
         public int $id,

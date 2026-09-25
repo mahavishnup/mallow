@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Fortify;
 
 use App\Actions\Teams\CreateTeam;
@@ -10,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
-class CreateNewUser implements CreatesNewUsers
+final class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules, ProfileValidationRules;
 
@@ -33,12 +35,12 @@ class CreateNewUser implements CreatesNewUsers
 
         return DB::transaction(function () use ($input) {
             $user = User::create([
-                'name' => $input['name'],
-                'email' => $input['email'],
+                'name'     => $input['name'],
+                'email'    => $input['email'],
                 'password' => $input['password'],
             ]);
 
-            $this->createTeam->handle($user, $user->name."'s Team", isPersonal: true);
+            $this->createTeam->handle($user, $user->name . "'s Team", isPersonal: true);
 
             return $user;
         });

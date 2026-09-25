@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Concerns;
 
 use App\Models\Team;
@@ -17,7 +19,7 @@ trait GeneratesUniqueTeamSlugs
         $query = static::withTrashed()
             ->where(function ($query) use ($defaultSlug) {
                 $query->where('slug', $defaultSlug)
-                    ->orWhere('slug', 'like', $defaultSlug.'-%');
+                    ->orWhere('slug', 'like', $defaultSlug . '-%');
             });
 
         if ($excludeId) {
@@ -30,7 +32,8 @@ trait GeneratesUniqueTeamSlugs
             ->map(function (string $slug) use ($defaultSlug): ?int {
                 if ($slug === $defaultSlug) {
                     return 0;
-                } elseif (preg_match('/^'.preg_quote($defaultSlug, '/').'-(\d+)$/', $slug, $matches)) {
+                }
+                if (preg_match('/^' . preg_quote($defaultSlug, '/') . '-(\d+)$/', $slug, $matches)) {
                     return (int) $matches[1];
                 }
 
@@ -41,6 +44,6 @@ trait GeneratesUniqueTeamSlugs
 
         return $existingSlugs->isEmpty()
             ? $defaultSlug
-            : $defaultSlug.'-'.($maxSuffix + 1);
+            : $defaultSlug . '-' . ($maxSuffix + 1);
     }
 }

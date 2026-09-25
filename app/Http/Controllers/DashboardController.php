@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Models\TeamInvitation;
@@ -7,11 +9,11 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class DashboardController extends Controller
+final class DashboardController extends Controller
 {
     public function __invoke(Request $request): Response
     {
-        $email = strtolower($request->user()->email);
+        $email = mb_strtolower($request->user()->email);
 
         $pendingInvitations = TeamInvitation::query()
             ->with(['inviter', 'team'])
@@ -23,9 +25,9 @@ class DashboardController extends Controller
             ->latest()
             ->get()
             ->map(fn (TeamInvitation $invitation) => [
-                'code' => $invitation->code,
+                'code'        => $invitation->code,
                 'inviterName' => $invitation->inviter->name,
-                'team' => [
+                'team'        => [
                     'name' => $invitation->team->name,
                     'slug' => $invitation->team->slug,
                 ],

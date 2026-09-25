@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
@@ -24,7 +26,7 @@ use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 use Laravel\Passkeys\Contracts\PasskeyLoginResponse as PasskeyLoginResponseContract;
 
-class FortifyServiceProvider extends ServiceProvider
+final class FortifyServiceProvider extends ServiceProvider
 {
     /**
      * Register any application services.
@@ -64,8 +66,8 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
             'canResetPassword' => Features::enabled(Features::resetPasswords()),
-            'status' => $request->session()->get('status'),
-            'teamInvitation' => $this->teamInvitation($request),
+            'status'           => $request->session()->get('status'),
+            'teamInvitation'   => $this->teamInvitation($request),
         ]));
 
         Fortify::resetPasswordView(fn (Request $request) => Inertia::render('auth/reset-password', [
@@ -95,12 +97,10 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureRateLimiting(): void
     {
-        RateLimiter::for('two-factor', function (Request $request) {
-            return Limit::perMinute(5)->by($request->session()->get('login.id'));
-        });
+        RateLimiter::for('two-factor', fn (Request $request) => Limit::perMinute(5)->by($request->session()->get('login.id')));
 
         RateLimiter::for('login', function (Request $request) {
-            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())) . '|' . $request->ip());
 
             return Limit::perMinute(5)->by($throttleKey);
         });
@@ -109,7 +109,7 @@ class FortifyServiceProvider extends ServiceProvider
             $credentialId = $request->input('credential.id');
 
             return Limit::perMinute(10)->by(
-                ($credentialId ?: $request->session()->getId()).'|'.$request->ip(),
+                ($credentialId ?: $request->session()->getId()) . '|' . $request->ip(),
             );
         });
     }
@@ -141,7 +141,7 @@ class FortifyServiceProvider extends ServiceProvider
         }
 
         return [
-            'code' => $invitation->code,
+            'code'     => $invitation->code,
             'teamName' => $invitation->team->name,
         ];
     }

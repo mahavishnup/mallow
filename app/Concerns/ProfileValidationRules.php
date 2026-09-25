@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Concerns;
 
 use App\Models\User;
@@ -16,7 +18,7 @@ trait ProfileValidationRules
     protected function profileRules(?int $userId = null): array
     {
         return [
-            'name' => $this->nameRules(),
+            'name'  => $this->nameRules(),
             'email' => $this->emailRules($userId),
         ];
     }

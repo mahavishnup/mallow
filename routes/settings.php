@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Teams\TeamController;
@@ -47,9 +49,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 });
 
-Route::get('.well-known/passkey-endpoints', function () {
-    return response()->json([
-        'enroll' => route('security.edit'),
-        'manage' => route('security.edit'),
-    ]);
-})->name('well-known.passkeys');
+Route::get('.well-known/passkey-endpoints', fn () => response()->json([
+    'enroll' => route('security.edit'),
+    'manage' => route('security.edit'),
+]))->name('well-known.passkeys');

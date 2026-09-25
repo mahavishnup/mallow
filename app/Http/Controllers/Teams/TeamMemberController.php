@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Teams;
 
 use App\Enums\TeamRole;
@@ -11,7 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
-class TeamMemberController extends Controller
+final class TeamMemberController extends Controller
 {
     /**
      * Update the specified team member's role.

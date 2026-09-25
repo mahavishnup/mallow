@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Concerns\GeneratesUniqueTeamSlugs;
@@ -27,30 +29,10 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, User> $members
  */
 #[Fillable(['name', 'slug', 'is_personal'])]
-class Team extends Model
+final class Team extends Model
 {
     /** @use HasFactory<TeamFactory> */
     use GeneratesUniqueTeamSlugs, HasFactory, SoftDeletes;
-
-    /**
-     * Bootstrap the model and its traits.
-     */
-    protected static function boot(): void
-    {
-        parent::boot();
-
-        static::creating(function (Team $team) {
-            if (empty($team->slug)) {
-                $team->slug = static::generateUniqueTeamSlug($team->name);
-            }
-        });
-
-        static::updating(function (Team $team) {
-            if ($team->isDirty('name')) {
-                $team->slug = static::generateUniqueTeamSlug($team->name, $team->id);
-            }
-        });
-    }
 
     /**
      * Get the team owner.
@@ -96,6 +78,34 @@ class Team extends Model
     }
 
     /**
+     * Get the route key for the model.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    /**
+     * Bootstrap the model and its traits.
+     */
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        self::creating(function (Team $team) {
+            if (empty($team->slug)) {
+                $team->slug = static::generateUniqueTeamSlug($team->name);
+            }
+        });
+
+        self::updating(function (Team $team) {
+            if ($team->isDirty('name')) {
+                $team->slug = static::generateUniqueTeamSlug($team->name, $team->id);
+            }
+        });
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -105,13 +115,5 @@ class Team extends Model
         return [
             'is_personal' => 'boolean',
         ];
-    }
-
-    /**
-     * Get the route key for the model.
-     */
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
     }
 }
