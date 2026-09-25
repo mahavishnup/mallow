@@ -53,82 +53,83 @@ invoice_total    = Σ line_totals
 
 ### 3.1 Migrations
 
-- [ ] **`invoices`** (Plan §3.2): `id`, `subscription_id` FK, `merchant_id` FK, `customer_id` FK (denormalized), `period_start date`, `period_end date`, `total_amount decimal(12,2)`, `status` (enum values draft/finalized/paid), timestamps. Indexes `(subscription_id, period_start)`; **unique `(subscription_id, period_start)`** (D3.5 idempotent invoicing).
-- [ ] **`invoice_items`** (Plan §3.2): `id`, `invoice_id` FK, `plan_id` FK, `segment_start`, `segment_end`, `prorated_base decimal(12,2)`, `included_units unsignedBigInteger`, `billable_usage unsignedBigInteger`, `overage_units unsignedBigInteger`, `overage_amount decimal(12,2)`, `line_total decimal(12,2)`. Index `(invoice_id)`.
+- [x] **`invoices`** (Plan §3.2): `id`, `subscription_id` FK, `merchant_id` FK, `customer_id` FK (denormalized), `period_start date`, `period_end date`, `total_amount decimal(12,2)`, `status` (enum values draft/finalized/paid), timestamps. Indexes `(subscription_id, period_start)`; **unique `(subscription_id, period_start)`** (D3.5 idempotent invoicing).
+- [x] **`invoice_items`** (Plan §3.2): `id`, `invoice_id` FK, `plan_id` FK, `segment_start`, `segment_end`, `prorated_base decimal(12,2)`, `included_units unsignedBigInteger`, `billable_usage unsignedBigInteger`, `overage_units unsignedBigInteger`, `overage_amount decimal(12,2)`, `line_total decimal(12,2)`. Index `(invoice_id)`.
 
 ### 3.2 `ProrationService` (`app/Services/ProrationService.php`) — pure functions
 
-- [ ] `proratedBaseCents(int $baseCents, int $activeDays, int $cycleDays): int`
-- [ ] `proratedIncludedUnits(int $includedUnits, int $activeDays, int $cycleDays): int`
-- [ ] `overageCents(int $overageUnits, int $rateMicros): int` // rate 4dp → micro-units: rate × 10000 = micros per unit
-- [ ] All integer math; half-up rounding helper (`intdiv(n + d/2, d)` pattern — write once, test it).
+- [x] `proratedBaseCents(int $baseCents, int $activeDays, int $cycleDays): int`
+- [x] `proratedIncludedUnits(int $includedUnits, int $activeDays, int $cycleDays): int`
+- [x] `overageCents(int $overageUnits, int $rateMicros): int` — **correction discovered in tests**: micros are micro-**dollars**, so `cents = units × micros / 100` (not `/10_000`). Unit tests caught the 100× error.
+- [x] All integer math; half-up rounding helper (`intdiv` + remainder≥half → +1 pattern).
 
 ### 3.3 `BillingService` (`app/Services/BillingService.php`)
 
-- [ ] `segmentsForPeriod(Subscription $sub, CarbonInterface $start, CarbonInterface $end): Collection` — clip + filter zero-length.
+- [x] `segmentsForPeriod(Subscription $sub, CarbonInterface $start, CarbonInterface $end): Collection` — clip + filter zero-length. — Note: type hints use `Carbon\CarbonInterface` because the app globally uses `CarbonImmutable` (`Date::use()`), so model date casts return immutable instances.
       -For usage: `segmentUsage(customerId, segStart, segEnd): int` — **sum from `daily_usage` only** (Plan §6: "reads daily_usage only, never raw events").
-- [ ] `buildInvoice(Subscription $sub, CarbonInterface $periodStart, CarbonInterface $periodEnd): Invoice` — resolve segments → per-segment item rows → invoice in **one `DB::transaction`**.
-- [ ] Idempotency (D3.5): first-or-existing on `(subscription_id, period_start)`; regenerate only when status = draft (delete draft items, rebuild). Finalized/paid invoices are never rebuilt.
-- [ ] Invoice status starts `draft`; separate `finalize()` transition (keep simple: generation creates draft; endpoint may finalize — decide in implementation, keep consistent in tests).
+- [x] `buildInvoice(Subscription $sub, CarbonInterface $periodStart, CarbonInterface $periodEnd): Invoice` — resolve segments → per-segment item rows → invoice in **one `DB::transaction`**.
+- [x] Idempotency (D3.5): first-or-existing on `(subscription_id, period_start)`; regenerate only when status = draft (delete draft items, rebuild). Finalized/paid invoices are never rebuilt.
+- [x] Invoice status starts `draft`; generation endpoint returns the draft (200); finalization is a model-level status transition exercised in tests.
 
 ### 3.4 Plan change — `ChangeSubscriptionPlanAction`
 
-- [ ] Closes the current segment at (effective date − 1 day) and opens a new segment from the effective date, ending at cycle end (Plan §3.2 subscription_segments note).
-- [ ] Boundary rule: effective **on** cycle boundary ⇒ **no zero-day segment** — just extend/adjust so a single full segment results.
-- [ ] Update denormalized `subscriptions.plan_id` + `ends_at` if needed.
-- [ ] Validate: effective date within the current cycle; plan belongs to the same merchant; plan active.
+- [x] Closes the current segment and opens a new segment from the effective date, ending at cycle end. — **Correction found by tests**: with half-open intervals, the old segment's `ends_at` must equal the effective date (not effective − 1) or a one-day gap goes unbilled.
+- [x] Boundary rule: effective **on** cycle boundary ⇒ **no zero-day segment** — just extend/adjust so a single full segment results.
+- [x] Update denormalized `subscriptions.plan_id` + `ends_at` if needed.
+- [x] Validate: effective date within the current cycle; plan belongs to the same merchant; plan active.
 
 ### 3.5 `CreateSubscriptionAction`
 
-- [ ] Creates subscription + initial segment `[starts_at, cycle_end)`; sets denormalized `merchant_id`, `plan_id`, `status=active`.
-- [ ] Initial cycle end = `starts_at + billing_cycle_days` of the plan.
+- [x] Creates subscription + initial segment `[starts_at, cycle_end)`; sets denormalized `merchant_id`, `plan_id`, `status=active`.
+- [x] Initial cycle end = `starts_at + billing_cycle_days` of the plan.
 
 ### 3.6 Job + endpoint
 
-- [ ] `GenerateInvoiceJob` (queue `billing`): wraps `GenerateInvoiceAction` → `BillingService::buildInvoice`. `$tries=3`, backoff.
-- [ ] `POST /api/subscriptions/{id}/invoice` (body: `period_start`, `period_end` optional — default current cycle) → validates ownership via API-key merchant → dispatches job (sync in tests) → returns invoice payload (Eloquent API resource) when run synchronously, or `202` + job accepted when queued. **Decide and be consistent:** for testability, have the endpoint call the action directly and dispatch the job for the scheduled/batch path; document.
+- [x] `GenerateInvoiceJob` (queue `billing`): wraps `GenerateInvoiceAction` → `BillingService::buildInvoice`. `$tries=3`, backoff.
+- [x] `POST /api/subscriptions/{id}/invoice` — **decision**: endpoint calls the action synchronously and returns the invoice (200, idempotent semantics); the queued job serves the scheduled/batch path.
 
 ### 3.7 Supporting CRUD (API key + merchant scoped)
 
-- [ ] `GET /api/plans` (list merchant's, active only by default) · `POST /api/plans` (validated; on create → **Phase 4 will add cache invalidation — no-op this phase**).
-- [ ] `GET /api/customers` (list merchant's).
-- [ ] `POST /api/subscriptions` (customer + plan, starts_at default today) → `CreateSubscriptionAction`.
-- [ ] `PATCH /api/subscriptions/{id}/plan` (plan_id, effective_date default today) → `ChangeSubscriptionPlanAction`.
+- [x] `GET /api/plans` (list merchant's, active only by default; `?include_inactive=1` for all) · `POST /api/plans` (validated; Phase 4 adds cache invalidation).
+- [x] `GET /api/customers` (list merchant's).
+- [x] `POST /api/subscriptions` (customer + plan, starts_at default today) → `CreateSubscriptionAction`.
+- [x] `PATCH /api/subscriptions/{id}/plan` (plan_id, effective_date default today) → `ChangeSubscriptionPlanAction`.
 
 ### 3.8 Tests
 
 **`tests/Unit/ProrationServiceTest.php`** — pure math:
 
-- [ ] full cycle → no proration
-- [ ] half cycle → half base / half allowance (clean numbers)
-- [ ] rounding: e.g. base 999 cents × 7/30 → exact half-up value
-- [ ] allowance rounding half-up to whole units
-- [ ] overage rate micros math
+- [x] full cycle → no proration
+- [x] half cycle → half base / half allowance (clean numbers)
+- [x] rounding: e.g. base 999 cents × 7/30 → exact half-up value
+- [x] allowance rounding half-up to whole units
+- [x] overage rate micros math
 
 **`tests/Feature/Billing/BillingTest.php`** — Plan §10 "Billing" matrix:
 
-- [ ] usage within allowance → base only
-- [ ] exactly at allowance → zero overage
-- [ ] above allowance → correct overage units/amount
-- [ ] zero usage → base only (D3.4)
-- [ ] mid-cycle subscription start → prorated base
-- [ ] multiple segments → per-segment totals
-- [ ] upgrade mid-cycle → old usage at old rate, new usage at new rate
-- [ ] downgrade mid-cycle → same, prorated allowances
-- [ ] invoice total = Σ segments
-- [ ] idempotent invoice generation (same subscription+period twice → one invoice)
+- [x] usage within allowance → base only
+- [x] exactly at allowance → zero overage
+- [x] above allowance → correct overage units/amount
+- [x] zero usage → base only (D3.4)
+- [x] mid-cycle subscription start → prorated base
+- [x] multiple segments → per-segment totals
+- [x] upgrade mid-cycle → old usage at old rate, new usage at new rate
+- [x] downgrade mid-cycle → same, prorated allowances
+- [x] invoice total = Σ segments
+- [x] idempotent invoice generation (same subscription+period twice → one invoice)
+- [x] finalized invoices are never rebuilt (extra regression test)
 
 **`tests/Feature/Api/SubscriptionPlanChangeTest.php`**:
 
-- [ ] PATCH plan change closes/opens segments correctly (dates, no zero-day segments at boundaries)
-- [ ] tenant isolation on all new endpoints
+- [x] PATCH plan change closes/opens segments correctly (dates, no zero-day segments at boundaries)
+- [x] tenant isolation on all new endpoints
 
 ## 4. Acceptance Criteria
 
-- [ ] All Plan §10 billing rows green; boundary dates (cycle-boundary change) produce a single segment.
-- [ ] Invoices + items written atomically; unique constraint prevents duplicate invoices.
-- [ ] Old usage billed at old plan's rate after mid-cycle change; new usage at new plan's rate.
-- [ ] Pint + PHPStan clean.
+- [x] All Plan §10 billing rows green; boundary dates (cycle-boundary change) produce a single segment.
+- [x] Invoices + items written atomically; unique constraint prevents duplicate invoices.
+- [x] Old usage billed at old plan's rate after mid-cycle change; new usage at new plan's rate.
+- [x] Pint + PHPStan clean. — 24/24 Phase 3 tests; full suite 147/147 (521 assertions).
 
 ## 5. Notes & Links
 
