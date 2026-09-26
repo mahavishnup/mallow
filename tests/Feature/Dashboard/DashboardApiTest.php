@@ -232,3 +232,55 @@ test('session authenticated team member can access the dashboard without an api 
 test('dashboard requires authentication when no api key resolves', function (): void {
     getJson("/api/merchants/{$this->merchant->id}/dashboard")->assertUnauthorized();
 });
+
+test('dashboard exposes cycle overview, active plan, and zero filled daily trend', function (): void {
+    $customer = Customer::factory()->create(['merchant_id' => $this->merchant->id, 'name' => 'Trendy']);
+
+    Subscription::factory()->create([
+        'customer_id' => $customer->id,
+        'merchant_id' => $this->merchant->id,
+        'plan_id'     => $this->plan->id,
+        'starts_at'   => now()->utc()->subDays(3)->toDateString(),
+    ]);
+
+    // Usage on the UTC grid — the trend window is anchored to now()->utc(),
+    // so test rows must use the same clock or indices drift across timezones.
+    dashUsage($customer->id, $this->merchant->id, now()->utc()->toDateString(), 300);
+    dashUsage($customer->id, $this->merchant->id, now()->utc()->subDays(3)->toDateString(), 100);
+
+    $response = getJson("/api/merchants/{$this->merchant->id}/dashboard", ['X-Api-Key' => $this->plainKey]);
+    $response->assertOk();
+
+    $cycle = $response->json('data.cycle_overview');
+    expect($cycle['usage_to_date'])->toBe(400)
+        ->and($cycle['included_units'])->toBe(1_000)
+        ->and((float) $cycle['usage_percentage'])->toBe(40.0);
+
+    $plan = $response->json('data.active_plan');
+    expect($plan['name'])->toBe($this->plan->name)
+        ->and($plan['billing_cycle_days'])->toBe(30);
+
+    $trend = $response->json('data.daily_trend');
+    $winStart = now()->utc()->subDays(29)->startOfDay()->toDateString();
+    $winEnd = now()->utc()->startOfDay()->toDateString();
+
+    expect(count($trend))->toBe(30)
+        // today−3 sits at index 26 of a 30-day window (index 0 = today−29).
+        ->and($trend[26]['total_quantity'])->toBe(100)
+        ->and($trend[26]['date'])->toBe(now()->utc()->subDays(3)->startOfDay()->toDateString())
+        ->and($trend[29]['total_quantity'])->toBe(300)
+        ->and($trend[29]['date'])->toBe($winEnd)
+        ->and($trend[0]['date'])->toBe($winStart)
+        // Gap days are zero-filled, not missing.
+        ->and($trend[0]['total_quantity'])->toBe(0)
+        ->and($trend[15]['total_quantity'])->toBe(0);
+});
+
+test('active plan is null with no active subscriptions', function (): void {
+    $response = getJson("/api/merchants/{$this->merchant->id}/dashboard", ['X-Api-Key' => $this->plainKey]);
+
+    $response->assertOk();
+
+    expect($response->json('data.active_plan'))->toBeNull()
+        ->and($response->json('data.cycle_overview.usage_to_date'))->toBe(0);
+});

@@ -75,6 +75,11 @@ test('team member sees the three billing metric props with fixture values', func
             ->has('churnRiskCustomers', 1)
             ->where('churnRiskCustomers.0.name', 'Light User')
             ->where('churnRiskCustomers.0.drop_percentage', fn ($value) => (float) $value === 90.0)
+            ->has('cycleOverview')
+            ->where('cycleOverview.usage_to_date', 1_500)
+            ->where('cycleOverview.included_units', 1_000)
+            ->where('activePlan.name', $this->plan->name)
+            ->has('dailyTrend', 30)
     );
 });
 

@@ -43,7 +43,16 @@ final class DashboardController extends Controller
         return Inertia::render('dashboard', [
             'pendingInvitations' => $pendingInvitations,
             'billingMonth'       => now()->utc()->format('Y-m'),
-            'usageTopCustomers'  => $team !== null
+            'cycleOverview'      => $team !== null
+                ? $dashboard->cycleOverview($team)
+                : ['usage_to_date' => 0, 'included_units' => 0, 'usage_percentage' => 0.0],
+            'activePlan' => $team !== null
+                ? $dashboard->activePlanSummary($team)
+                : null,
+            'dailyTrend' => $team !== null
+                ? $dashboard->dailyUsageTrend($team)
+                : [],
+            'usageTopCustomers' => $team !== null
                 ? $dashboard->topCustomers($team)
                 : [],
             'projectedOverage' => $team !== null

@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid } from 'lucide-react';
+import { BookOpen, LayoutGrid } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -31,7 +31,13 @@ export function AppSidebar() {
         },
     ];
 
-    const footerNavItems: NavItem[] = [];
+    const footerNavItems: NavItem[] = [
+        {
+            title: 'API Docs',
+            href: '/docs',
+            icon: BookOpen,
+        },
+    ];
 
     return (
         <Sidebar collapsible="icon" variant="inset">

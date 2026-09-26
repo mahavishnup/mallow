@@ -40,5 +40,9 @@ Route::middleware([
         // controller falls back to an authenticated session user's team
         // membership.
         Route::get('merchants/{id}/dashboard', [DashboardController::class, '__invoke'])
-            ->name('api.merchants.dashboard');
+            ->name('api.merchants.dashboard')
+            // Merchant ids are numeric; a tenant *slug* belongs to the web
+            // route, so a slug here must 404 cleanly instead of tripping the
+            // controller's int type-hint.
+            ->whereNumber('id');
     });

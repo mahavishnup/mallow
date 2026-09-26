@@ -5,6 +5,8 @@ const numberFormatter = new Intl.NumberFormat('en-US');
 
 type TopCustomersProps = {
     customers: UsageTopCustomer[];
+    /** Total included units across active plans, for the % of allowance column. */
+    totalIncludedUnits?: number;
     loading?: boolean;
 };
 
@@ -13,6 +15,7 @@ type TopCustomersProps = {
  */
 export function TopCustomers({
     customers,
+    totalIncludedUnits = 0,
     loading = false,
 }: TopCustomersProps) {
     return (
@@ -29,6 +32,9 @@ export function TopCustomers({
                         <th className="pb-2 font-medium">#</th>
                         <th className="pb-2 font-medium">Customer</th>
                         <th className="pb-2 text-right font-medium">Usage</th>
+                        <th className="pb-2 text-right font-medium">
+                            % of Allowance
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -45,6 +51,11 @@ export function TopCustomers({
                                 {numberFormatter.format(
                                     customer.total_quantity,
                                 )}
+                            </td>
+                            <td className="py-2 text-right text-muted-foreground tabular-nums">
+                                {totalIncludedUnits > 0
+                                    ? `${((customer.total_quantity / totalIncludedUnits) * 100).toFixed(1)}%`
+                                    : '—'}
                             </td>
                         </tr>
                     ))}

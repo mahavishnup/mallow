@@ -15,7 +15,27 @@ use Illuminate\Http\Response;
 final class UsageController extends Controller
 {
     /**
-     * Record a usage event (idempotent via idempotency_key).
+     * Record a usage event for the authenticated merchant's customer (idempotent).
+     *
+     * The merchant (tenant) is resolved from the X-Api-Key header; the customer
+     * must belong to that merchant and hold an active subscription covering
+     * usage_date. Retrying with the same idempotency_key returns
+     * 200 {duplicate: true} and never counts the usage twice.
+     *
+     * @authenticated
+     *
+     * @group Usage
+     *
+     * @bodyParam customer_id integer required The customer ID (must belong to the authenticated merchant). Example: 1
+     * @bodyParam usage_date string required The usage date, today or earlier (Y-m-d). Example: 2026-09-26
+     * @bodyParam quantity integer required Usage quantity, min 1. Example: 250
+     * @bodyParam type string required Usage type (alpha-dash), informational — all types bill against one allowance. Example: api_calls
+     * @bodyParam idempotency_key string required UUID v4. Retries with the same key are safe. Example: 0d0f4c2e-1111-4111-8111-000000000001
+     *
+     * @response 201 {"data": {"id": 1, "customer_id": 1, "usage_date": "2026-09-26", "quantity": 250, "type": "api_calls"}}
+     * @response 200 {"duplicate": true} {"Duplicate idempotency_key: the event was already stored; nothing is counted twice."}
+     * @response status=404 {"message": "Not found."} {"Customer does not belong to this merchant."}
+     * @response status=422 {"message": "...", "errors": {"customer_id": ["no_active_subscription"]}} {"Customer has no active subscription covering usage_date."}
      */
     public function store(RecordUsageRequest $request, RecordUsageAction $action): JsonResponse
     {
