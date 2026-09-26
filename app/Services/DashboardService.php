@@ -35,9 +35,13 @@ final class DashboardService
         $start = $month->copy()->startOfMonth()->toDateString();
         $end = $month->copy()->addMonth()->startOfMonth()->toDateString();
 
+        // Half-open [start, end): >= first day of month, < first day of next month.
+        // Avoids counting the boundary date in both months if a query runs exactly
+        // on month-end midnight (consistent with every other date range in this app).
         $rows = DB::table('daily_usage')
             ->where('daily_usage.merchant_id', $merchant->id)
-            ->whereBetween('daily_usage.usage_date', [$start, $end])
+            ->where('daily_usage.usage_date', '>=', $start)
+            ->where('daily_usage.usage_date', '<', $end)
             ->join('customers', 'customers.id', '=', 'daily_usage.customer_id')
             ->groupBy('daily_usage.customer_id', 'customers.name')
             ->selectRaw('daily_usage.customer_id as customer_id, customers.name as name, SUM(daily_usage.total_quantity) as total_quantity')

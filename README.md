@@ -275,19 +275,42 @@ Merchant = Team (existing multi-tenant foundation)
 
 ## Scaling to 5M+ Events
 
-The design choices that keep this performant at volume:
+### Why the schema holds up at 50L (5M+) rows
 
-- **Normalization + immutability**: raw events are append-only; no updates contend at scale.
-- **Aggregates avoid repeated scans**: billing and dashboards read `daily_usage` (one row per customer/day), never raw events.
-- **Composite indexes ordered by selectivity** and actual query patterns.
-- **PK-cursor chunking** (`chunkById`) — no offset scans, bounded memory.
+**Raw events stay normalized and immutable.** `usage_events` is append-only — no UPDATE contention, no locking on existing rows. Every insert is a pure single-row write.
 
-Future scaling paths (documented, not implemented):
+**The aggregation layer eliminates repeated full-table scans.** Billing and dashboard queries never touch raw events once `AggregateDailyUsageAction` has run. `daily_usage` has at most one row per customer per calendar day — at 5M events this collapses to a tiny table that fits comfortably in the buffer pool.
 
-- Monthly **range partitioning** of `usage_events` on `usage_date`
-- **Retention/archival**: drop events older than N months (daily_usage remains)
-- **Read replica** for dashboard/reporting queries
-- **Bulk insert** path for ingestion bursts
+**Index strategy at scale**
+
+| Index                                                               | Why it stays cheap at 5M+ rows                                                                                                  |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `usage_events(uuid) UNIQUE`                                         | B-tree point lookup — O(log n), unaffected by table size                                                                        |
+| `usage_events(aggregated_at) WHERE aggregated_at IS NULL` (partial) | Only un-aggregated rows are indexed. As events age out (marked aggregated), the index stays small regardless of total row count |
+| `usage_events(customer_id, usage_date)`                             | Composite covering the aggregation cursor; leading column is high-selectivity (customer)                                        |
+| `usage_events(merchant_id, usage_date)`                             | Merchant-wide scans on a bounded date range — never a full-table scan                                                           |
+| `daily_usage(customer_id, usage_date) UNIQUE`                       | Upsert target; also the billing read index. Tiny table — always fast                                                            |
+| `daily_usage(merchant_id, usage_date)`                              | Dashboard month rollups on the small aggregate table                                                                            |
+
+**Composite index column order**: most-selective column first (`customer_id` before `usage_date`) to minimize the range scan within each customer's partition of the index.
+
+**Chunked aggregation avoids memory pressure.** `chunkById(1000)` uses a primary-key cursor (not `OFFSET`), so memory is O(chunk_size) not O(table_size). 5M rows → ~5,000 iterations, each touching a bounded memory footprint.
+
+### Current implementation choices
+
+- No denormalization beyond `daily_usage` itself (which is always rebuildable from events).
+- No sharding or partitioning in the take-home scope — the architecture is designed to add them without breaking the billing engine.
+
+### Future scaling paths (documented, not implemented)
+
+| Technique                                                        | When to apply                      | Impact                                                                                                                                      |
+| ---------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Monthly range partitioning** of `usage_events` on `usage_date` | ~50M+ rows                         | Partition pruning eliminates full-table scans on date-bounded queries; old partitions can be cheaply dropped for retention                  |
+| **Retention / archival**                                         | Events older than N billing cycles | Drop or archive raw event partitions after aggregation — `daily_usage` retains all history. Billing is unaffected                           |
+| **Read replica** routing                                         | High dashboard/reporting load      | Route `DashboardService` and billing reads to a read replica; writes (ingestion) stay on primary                                            |
+| **Bulk insert** endpoint                                         | Bursty producers (batch uploads)   | `INSERT … VALUES (…), (…)` batches reduce per-row round-trip cost dramatically                                                              |
+| **Horizontal queue scaling**                                     | Aggregation lag > SLA              | Multiple `queue:work` processes or Horizon; `AggregateDailyUsageJob` is safe to run concurrently (watermark guard prevents double-counting) |
+| **Per-usage-type dimensions**                                    | Multi-product billing              | Add a `type` column to `daily_usage`; each billing segment gets an allowance per type                                                       |
 
 ---
 
@@ -442,6 +465,23 @@ Tests run on in-memory SQLite with a sync queue — fully portable SQL (partial 
 
 ---
 
+## AI Prompt Log
+
+This project was built with AI-assisted development using **Vs Code** (GitHub Copilot power by GLM) and **Antigravity IDE** (powered by Claude). The `/prompts` folder in the repository root contains screenshots of the actual prompts used during development, including:
+
+- Schema design and index strategy prompts
+- Aggregation action and watermark design
+- Billing engine and proration math
+- Cache invalidation strategy
+- Dashboard service and projection logic
+- Test coverage design
+
+Screenshots are named `image1.png` … `image7.png` in chronological order.
+
+The assignment explicitly welcomes and encourages AI-assisted development. These screenshots show exactly what was asked of the AI at each stage — the engineering decisions, trade-off discussions, and code reviews were all conducted in the AI chat session captured there.
+
+---
+
 ## Project Layout
 
 ```text
@@ -458,5 +498,6 @@ app/
 resources/js/
   components/billing/         # MetricSection, TopCustomers, ProjectedOverage, ChurnRisk
   types/billing.ts            # shared payload types
+prompts/                      # AI prompt log (screenshots of actual prompts used)
 thoughts/shared/plans/        # phase-by-phase implementation briefs (living docs)
 ```

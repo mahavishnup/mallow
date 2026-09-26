@@ -134,8 +134,9 @@ final class BillingDemoSeeder extends Seeder
     private function seedMerchant(): Team
     {
         $owner = User::factory()->create([
-            'name'  => 'Demo Merchant Owner',
-            'email' => 'demo@example.com',
+            'name'     => 'Demo Merchant Owner',
+            'email'    => 'demo@example.com',
+            'password' => bcrypt('password'), // Matches the printed credentials below.
         ]);
 
         $merchant = Team::factory()->create([
