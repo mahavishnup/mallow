@@ -22,7 +22,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class BillingService
 {
-    public function __construct(private readonly ProrationService $proration) {}
+    public function __construct(
+        private readonly ProrationService $proration,
+        private readonly PlanPricingCache $pricingCache,
+    ) {}
 
     /**
      * Segments overlapping [periodStart, periodEnd), clipped to the period.
@@ -139,26 +142,29 @@ final class BillingService
                 /** @var Plan $plan */
                 $plan = Plan::query()->findOrFail($segment->plan_id);
 
+                // Pricing read goes through the cache — one snapshot per plan
+                // per run (Plan §7 billing safety).
+                $pricing = $this->pricingCache->get($plan);
+
                 $activeDays = (int) $segment->starts_at->diffInDays($segment->ends_at);
-                $cycleDays = $plan->billing_cycle_days;
 
                 $proratedBaseCents = $this->proration->proratedBaseCents(
-                    $this->basePriceCents($plan),
+                    $pricing->basePriceCents,
                     $activeDays,
-                    $cycleDays,
+                    $pricing->cycleDays,
                 );
 
                 $proratedIncluded = $this->proration->proratedIncludedUnits(
-                    $plan->included_units,
+                    $pricing->includedUnits,
                     $activeDays,
-                    $cycleDays,
+                    $pricing->cycleDays,
                 );
 
                 $usage = $this->segmentUsage($subscription->customer_id, $segment->starts_at, $segment->ends_at);
                 $overageUnits = max(0, $usage - $proratedIncluded);
                 $overageCents = $this->proration->overageCents(
                     $overageUnits,
-                    $this->proration->rateToMicros($plan->overage_rate),
+                    $pricing->overageRateMicros,
                 );
 
                 return [
@@ -173,13 +179,5 @@ final class BillingService
                     'line_total_cents'    => $proratedBaseCents + $overageCents,
                 ];
             });
-    }
-
-    /**
-     * Convert the plan's decimal base price to integer cents (single point of conversion).
-     */
-    private function basePriceCents(Plan $plan): int
-    {
-        return (int) round(((float) $plan->base_price) * 100);
     }
 }

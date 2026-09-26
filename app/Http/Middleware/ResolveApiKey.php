@@ -31,13 +31,21 @@ final class ResolveApiKey
     /**
      * Handle an incoming request.
      *
+     * Strict by default: a present-but-invalid key always 401s, and a missing
+     * key 401s unless the route opts into dual auth via "ResolveApiKey:optional"
+     * (used by the dashboard endpoint's session fallback, D4.2).
+     *
      * @param  Closure(Request): (Response)  $next
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, ?string $mode = null): Response
     {
         $headerKey = $request->headers->get('X-Api-Key');
 
         if ($headerKey === null || $headerKey === '') {
+            if ($mode === 'optional') {
+                return $next($request);
+            }
+
             return response()->json(['error' => 'missing_api_key'], Response::HTTP_UNAUTHORIZED);
         }
 

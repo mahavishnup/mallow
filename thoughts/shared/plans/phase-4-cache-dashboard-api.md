@@ -24,20 +24,20 @@
 
 ### 2.1 `PlanPricingCache` (`app/Services/PlanPricingCache.php`)
 
-- [ ] Key: `plan:{id}:pricing` → `{base_price_cents, included_units, overage_rate_micros, cycle_days}` (Plan §7).
-- [ ] `get(Plan $plan): PricingDTO` — read-through: cache hit → DTO; miss → build from model, `Cache::put` with `config('billing.cache.plan_pricing_ttl')`.
-- [ ] `forget(int $planId): void` → `Cache::forget`.
-- [ ] **Write-through invalidation**: hook into every plan mutation path — Plan controller update/create + any seeder/command that mutates. Implementation: model hook (`static::saved`/`updated` on `Plan`) is the most leak-proof (works for Eloquent saves regardless of caller). Use `Cache::forget` on saved+deleted events, only when pricing-relevant attributes are dirty (`base_price`, `included_units`, `overage_rate`, `billing_cycle_days`).
-- [ ] Billing read path: Phase 3's `BillingService` switches its direct `Plan` pricing reads to `PlanPricingCache` (single read per plan per run — Plan §7 billing safety). Keep `BillingService` tests passing; add one cache-hit assertion.
+- [x] Key: `plan:{id}:pricing` → `{base_price_cents, included_units, overage_rate_micros, cycle_days}` (Plan §7). — DTO: `App\Data\PlanPricing` (moved out of `Services` — value objects live in `app/Data/`, matching `UserTeam`/`TeamPermissions` convention; `final readonly class`, promoted properties).
+- [x] `get(Plan $plan): PlanPricing` — read-through: cache hit → DTO; miss → build from model, `Cache::put` with `config('billing.cache.plan_pricing_ttl')`.
+- [x] `forget(int $planId): void` → `Cache::forget`.
+- [x] **Write-through invalidation**: `Plan::booted()` model hooks — `saved` (only when pricing-relevant attributes `wasChanged`) and `deleted`. Works regardless of the mutation's caller (controller, seeder, tinker).
+- [x] Billing read path: `BillingService` reads pricing through `PlanPricingCache` (single snapshot per plan per run). Phase 3 billing tests unchanged and green; cache-hit behavior covered by the new dashboard tests.
 
 ### 2.2 `DashboardService` (`app/Services/DashboardService.php`)
 
 Metrics (Plan §5.2), all from `daily_usage` (never raw events):
 
-- [ ] **topCustomers(Team $merchant, ?CarbonInterface $month = null): Collection** — current-month totals per customer, desc, limit 5. Month default = current UTC month.
-- [ ] **projectedOverageRevenue(Team $merchant): array|Collection** — for each active subscription: `usage_to_date` (cycle-to-date from daily_usage) vs `prorated_included_so_far`; current overage; **linear projection** to cycle end: `projected_usage = usage_to_date / days_elapsed × cycle_days` (documented assumption, `config('billing.dashboard.projection')`). Return per-subscription rows + total projected overage revenue. Guard `days_elapsed = 0` (day 1 of cycle → projection = usage_to_date × cycle_days? decide: use max(1, days_elapsed)).
-- [ ] **churnRiskCustomers(Team $merchant): Collection** — customers whose current-month usage < previous-month usage × (1 − 0.5), i.e. **>50% MoM drop** (threshold from config). **Exclude previous-month = 0** (documented convention — no divide-by-zero, no false churn flags for new customers). Include before/after figures in payload.
-- [ ] All queries merchant-scoped; use the `(merchant_id, usage_date)` indexes.
+- [x] **topCustomers(Team $merchant, ?CarbonInterface $month = null): Collection** — current-month totals per customer, desc, limit 5. Month default = current UTC month. — Implemented over `DB::table` (join+groupBy+selectRaw) with explicit casts at the boundary; Eloquent dynamic attributes were unanalyzable by PHPStan.
+- [x] **projectedOverageRevenue(Team $merchant): array** — linear projection `projected_usage = usage_to_date / days_elapsed × cycle_days` (half-up), day-one guard `max(1, days_elapsed)`; returns per-subscription rows + total cents.
+- [x] **churnRiskCustomers(Team $merchant): Collection** — >50% MoM drop (threshold from config); previous-month = 0 excluded by convention; before/after figures in payload.
+- [x] All queries merchant-scoped; qualified `daily_usage.` columns after the customers join (SQLite raised `ambiguous column: merchant_id`).
 
 ### 2.3 Endpoint — `app/Http/Controllers/Api/DashboardController.php`
 
@@ -45,8 +45,8 @@ Metrics (Plan §5.2), all from `daily_usage` (never raw events):
 GET /api/merchants/{id}/dashboard   [ResolveApiKey OR team session]  → D4.2
 ```
 
-- [ ] Auth: if `X-Api-Key` resolved a merchant → use it (and `{id}` must match, else 403). Else fall back to authenticated web user with membership on team `{id}` (reuse `EnsureTeamMembership` logic or a lightweight check). This lets the React dashboard (Phase 5) hit the same JSON when needed and keeps the machine API honest.
-- [ ] Response (API Resource or plain typed array):
+- [x] Auth: `X-Api-Key` resolves the merchant (`{id}` must match, else 403). Fallback: session-authenticated user via `belongsToTeam()` (403 for non-members, 401 anonymous). Route runs `ResolveApiKey:optional` + cookie/session middleware because the default `api` group has none — key-only requests stay valid since auth is enforced in the controller, not by `auth` middleware.
+- [x] Response (plain typed array):
 
 ```json
 {
@@ -62,21 +62,22 @@ GET /api/merchants/{id}/dashboard   [ResolveApiKey OR team session]  → D4.2
 
 ### 2.4 Tests — `tests/Feature/Dashboard/DashboardApiTest.php`
 
-- [ ] top-5 ordering + limit (6 customers with distinct usage → only top 5, correct order)
-- [ ] projection math: known usage/days → exact projected overage units/cents (hand-computed fixture)
-- [ ] `days_elapsed = 1` (day-one guard)
-- [ ] churn: >50% drop flagged; ≤50% not; **previous month zero → excluded**
-- [ ] current month zero + previous >0 → 100% drop → flagged
-- [ ] tenant isolation: another merchant's data never appears
-- [ ] **cache invalidation test**: mutate a plan's `base_price` via API → next `PlanPricingCache::get` returns fresh value (not stale)
-- [ ] cache hit path: second `get` within TTL doesn't query DB (assert query count or use `Cache::spy`)
+- [x] top-5 ordering + limit (6 customers with distinct usage → only top 5, correct order)
+- [x] projection math: known usage/days → exact projected overage units/cents (hand-computed fixtures: 200→6,000 day-one; 800→2,400 over 10 elapsed days)
+- [x] `days_elapsed = 1` (day-one guard)
+- [x] churn: >50% drop flagged; ≤50% not; **previous month zero → excluded**
+- [x] current month zero + previous >0 → 100% drop → flagged
+- [x] tenant isolation: another merchant's data never appears; mismatched `{id}` → 403
+- [x] **cache invalidation test**: plan `base_price` mutation → next `PlanPricingCache::get` returns fresh value
+- [x] cache hit path: second `get` within TTL issues zero queries (query-log proof)
+- [x] session team-member access without a key; outsider → 403; anonymous → 401
 
 ## 3. Acceptance Criteria
 
-- [ ] Dashboard payload contains all three metrics with correct math on hand-computed fixtures.
-- [ ] Plan mutation → pricing cache invalidated (test-proven); billing reads via cache.
-- [ ] Tenant isolation on the dashboard endpoint.
-- [ ] Pint + PHPStan clean; tests green.
+- [x] Dashboard payload contains all three metrics with correct math on hand-computed fixtures.
+- [x] Plan mutation → pricing cache invalidated (test-proven); billing reads via cache.
+- [x] Tenant isolation on the dashboard endpoint.
+- [x] Pint + PHPStan clean; tests green. — 10/10 dashboard tests; full suite 157/157.
 
 ## 4. Notes & Links
 

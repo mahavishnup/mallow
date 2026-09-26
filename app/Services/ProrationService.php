@@ -69,7 +69,7 @@ final class ProrationService
      * numerators round half-up toward positive infinity, matching PHP's
      * intdiv semantics for the sign and the "0.5 goes up" convention.
      */
-    private function roundHalfUp(int $numerator, int $denominator): int
+    public function roundHalfUp(int $numerator, int $denominator): int
     {
         if ($denominator <= 0) {
             throw new InvalidArgumentException('Denominator must be positive.');

@@ -24,7 +24,7 @@ flowchart TD
 | 1   | [phase-1-usage-ingestion.md](phase-1-usage-ingestion.md)         | Idempotent `POST /api/usage` with API-key auth, rate limiting, tenant checks                      | 0.5 d | ✅     |
 | 2   | [phase-2-aggregation.md](phase-2-aggregation.md)                 | Queued, chunked, retry-safe `usage_events` → `daily_usage` aggregation                            | 0.5 d | ✅     |
 | 3   | [phase-3-billing-engine.md](phase-3-billing-engine.md)           | Proration + overage + segmented billing → invoices; plan-change handling; supporting CRUD         | 1 d   | ✅     |
-| 4   | [phase-4-cache-dashboard-api.md](phase-4-cache-dashboard-api.md) | `PlanPricingCache` with write-through invalidation + `DashboardService` + dashboard JSON endpoint | 0.5 d | ⬜     |
+| 4   | [phase-4-cache-dashboard-api.md](phase-4-cache-dashboard-api.md) | `PlanPricingCache` with write-through invalidation + `DashboardService` + dashboard JSON endpoint | 0.5 d | ✅     |
 | 5   | [phase-5-frontend.md](phase-5-frontend.md)                       | Team-scoped Inertia dashboard: top-5 usage, projected overage, churn risk                         | 0.5 d | ⬜     |
 | 6   | [phase-6-polish-docs.md](phase-6-polish-docs.md)                 | Demo seeder, README (architecture/assumptions/trade-offs), full-suite verification                | 0.5 d | ⬜     |
 
@@ -69,6 +69,7 @@ flowchart TD
 - Models: `final class`, `declare(strict_types=1)`, `#[Fillable([...])]` attribute, PHPDoc `@property` / `@property-read` annotations, `HasFactory`, relations with full generics PHPDoc (see `app/Models/Team.php`).
 - Enums: `app/Enums`, TitleCase cases.
 - Actions: `app/Actions/<Domain>/…` (existing convention). Services (Billing/Proration/Dashboard/Cache) go in `app/Services/**` — **new top-level folder approved by Plan §2 architecture**.
+- DTOs / value objects: `app/Data/**` (existing convention: `UserTeam`, `TeamPermissions`) — `final readonly class` with promoted properties. Services depend on DTOs; DTOs never depend on services.
 - Controllers: thin; delegate to actions/services. API controllers under `app/Http/Controllers/Api/`.
 - Jobs: `app/Jobs/**` (new — approved by Plan §2).
 - Tests: Pest, `php artisan make:test --pest <Name>Test` (no directory prefix in the name).
@@ -82,6 +83,7 @@ app/Enums/{SubscriptionStatus,InvoiceStatus}.php
 app/Models/{Plan,Customer,Subscription,SubscriptionSegment,UsageEvent,DailyUsage,Invoice,InvoiceItem,ApiKey}.php
 app/Actions/Billing/{RecordUsageAction,ChangeSubscriptionPlanAction,CreateSubscriptionAction,GenerateInvoiceAction}.php
 app/Actions/Usage/AggregateDailyUsageAction.php
+app/Data/PlanPricing.php
 app/Services/{ProrationService,BillingService,DashboardService,PlanPricingCache}.php
 app/Jobs/{AggregateDailyUsageJob,GenerateInvoiceJob}.php
 app/Http/Middleware/ResolveApiKey.php

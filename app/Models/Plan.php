@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Services\PlanPricingCache;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -33,6 +34,11 @@ final class Plan extends Model
     use HasFactory;
 
     /**
+     * Attributes whose changes invalidate the cached pricing snapshot.
+     */
+    private const array PRICING_ATTRIBUTES = ['base_price', 'included_units', 'overage_rate', 'billing_cycle_days'];
+
+    /**
      * Get the merchant (team) that owns this plan.
      *
      * @return BelongsTo<Team, $this>
@@ -50,6 +56,22 @@ final class Plan extends Model
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
+    }
+
+    /**
+     * Boot model events: write-through pricing-cache invalidation (Plan §7).
+     */
+    protected static function booted(): void
+    {
+        self::saved(function (Plan $plan): void {
+            if ($plan->wasChanged(self::PRICING_ATTRIBUTES)) {
+                app(PlanPricingCache::class)->forget($plan->id);
+            }
+        });
+
+        self::deleted(function (Plan $plan): void {
+            app(PlanPricingCache::class)->forget($plan->id);
+        });
     }
 
     /**
