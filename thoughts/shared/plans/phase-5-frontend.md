@@ -24,38 +24,38 @@
 
 ### 2.1 Server side
 
-- [ ] Existing `app/Http/Controllers/DashboardController.php` (web) — resolve current team, call `DashboardService`, pass typed props: `usageTopCustomers`, `projectedOverage`, `churnRiskCustomers`, plus `billingMonth`.
-- [ ] Keep inertia response shape additive — existing `pendingInvitations` prop and its tests must stay green (`tests/Feature/DashboardTest.php`).
+- [x] Existing `app/Http/Controllers/DashboardController.php` (web) — resolve current team, call `DashboardService`, pass typed props: `usageTopCustomers`, `projectedOverage`, `churnRiskCustomers`, plus `billingMonth`. — Teamless users get empty defaults instead of a 500.
+- [x] Keep inertia response shape additive — existing `pendingInvitations` prop and its tests must stay green (`tests/Feature/DashboardTest.php`).
 
 ### 2.2 Types
 
-- [ ] TypeScript types for the props (match Phase 4 payload): place under `resources/js/types/billing.d.ts` (or existing types location per starter kit layout).
+- [x] TypeScript types for the props (match Phase 4 payload): `resources/js/types/billing.ts`, re-exported from `types/index.ts`.
 
 ### 2.3 Components (`resources/js/components/billing/`)
 
-- [ ] `top-customers.tsx` — table: rank, customer name, current-month usage (formatted number). Empty state: "No usage recorded this month."
-- [ ] `projected-overage.tsx` — highlight card: total projected overage revenue (formatted currency) + per-subscription breakdown table. Empty state: "No active subscriptions."
-- [ ] `churn-risk.tsx` — table: customer, previous month, current month, drop %. Color the drop red. Empty state: "No churn-risk customers detected." (Empty is the happy path here.)
-- [ ] `metric-section.tsx` — shared wrapper: title, loading skeleton, empty slot, error state ("Failed to load — retry" with `router.reload`), consistent card styling.
-- [ ] Styling: follow starter-kit patterns (existing dashboard page components, Tailwind classes already in use). No new dependencies.
+- [x] `top-customers.tsx` — table: rank, customer name, current-month usage (formatted number). Empty state: "No usage recorded this month."
+- [x] `projected-overage.tsx` — highlight card: total projected overage revenue (formatted currency) + per-subscription breakdown table. Empty state: "No active subscriptions."
+- [x] `churn-risk.tsx` — table: customer, previous month, current month, drop %. Color the drop red. Empty state: "No churn-risk customers detected." (Empty is the happy path here.)
+- [x] `metric-section.tsx` — shared wrapper: title, loading skeleton, empty slot, error state ("Retry" with `router.reload`), consistent card styling (shadcn Card + Skeleton).
+- [x] Styling: starter-kit patterns only (Card/Skeleton primitives, Tailwind, `Intl.NumberFormat`); no new dependencies.
 
 ### 2.4 Page wiring
 
-- [ ] `resources/js/pages/dashboard.tsx` — render the three sections (server props; loading/error states still matter for initial load + `router.reload` flows).
-- [ ] Header: merchant/team context + current cycle/billing month display.
-- [ ] Ensure `npm run build` is green and page renders with seeded data (Phase 6 seeder may not exist yet — verify with a manually seeded fixture or tinker-created rows, or defer visual verification to Phase 6 demo).
+- [x] `resources/js/pages/dashboard.tsx` — renders the three sections (server props; loading/error states still matter for initial load + `router.reload` flows). Placeholder cards replaced.
+- [x] Header: merchant/team context + current cycle/billing month display.
+- [x] `npm run build` green + `npx tsc --noEmit` clean; page data proven by `BillingDashboardTest` fixtures. — Visual check with seeded demo data deferred to Phase 6 (per this brief's allowance).
 
 ### 2.5 Tests
 
-- [ ] Extend `tests/Feature/DashboardTest.php` (or new `tests/Feature/Dashboard/BillingDashboardTest.php`): authenticated team member sees the three props with expected values from a seeded fixture.
-- [ ] Guest/unauthorized → redirect (already covered by existing test — keep green).
+- [x] New `tests/Feature/Dashboard/BillingDashboardTest.php`: authenticated team member sees the three props with expected values from a seeded fixture (incl. churn ordering + drop math); teamless user gets empty props.
+- [x] Guest/unauthorized → redirect (existing test — still green).
 
 ## 3. Acceptance Criteria
 
-- [ ] `/{team}/dashboard` renders all three sections with correct data from `DashboardService`.
-- [ ] Loading/empty/error states present for each section.
-- [ ] `npm run build` green; existing dashboard tests still pass; new props tests green.
-- [ ] Wayfinder regenerated if any route/controller signature changed.
+- [x] `/{team}/dashboard` renders all three sections with correct data from `DashboardService`.
+- [x] Loading/empty/error states present for each section (shared `MetricSection` wrapper).
+- [x] `npm run build` green; `tsc --noEmit` clean; existing dashboard tests still pass; new props tests green. — Full suite 159/159.
+- [x] Wayfinder: no route/controller signature changed in this phase — regeneration not required.
 
 ## 4. Notes & Links
 

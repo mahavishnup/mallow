@@ -5,13 +5,18 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\TeamInvitation;
+use App\Services\DashboardService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 final class DashboardController extends Controller
 {
-    public function __invoke(Request $request): Response
+    /**
+     * Render the team dashboard with usage-insight metrics (D5.1: metrics
+     * arrive as Inertia props — no client fetch).
+     */
+    public function __invoke(Request $request, DashboardService $dashboard): Response
     {
         $email = mb_strtolower($request->user()->email);
 
@@ -33,8 +38,20 @@ final class DashboardController extends Controller
                 ],
             ]);
 
+        $team = $request->user()->currentTeam;
+
         return Inertia::render('dashboard', [
             'pendingInvitations' => $pendingInvitations,
+            'billingMonth'       => now()->utc()->format('Y-m'),
+            'usageTopCustomers'  => $team !== null
+                ? $dashboard->topCustomers($team)
+                : [],
+            'projectedOverage' => $team !== null
+                ? $dashboard->projectedOverageRevenue($team)
+                : ['total_cents' => 0, 'subscriptions' => []],
+            'churnRiskCustomers' => $team !== null
+                ? $dashboard->churnRiskCustomers($team)
+                : [],
         ]);
     }
 }

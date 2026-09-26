@@ -25,7 +25,7 @@ flowchart TD
 | 2   | [phase-2-aggregation.md](phase-2-aggregation.md)                 | Queued, chunked, retry-safe `usage_events` → `daily_usage` aggregation                            | 0.5 d | ✅     |
 | 3   | [phase-3-billing-engine.md](phase-3-billing-engine.md)           | Proration + overage + segmented billing → invoices; plan-change handling; supporting CRUD         | 1 d   | ✅     |
 | 4   | [phase-4-cache-dashboard-api.md](phase-4-cache-dashboard-api.md) | `PlanPricingCache` with write-through invalidation + `DashboardService` + dashboard JSON endpoint | 0.5 d | ✅     |
-| 5   | [phase-5-frontend.md](phase-5-frontend.md)                       | Team-scoped Inertia dashboard: top-5 usage, projected overage, churn risk                         | 0.5 d | ⬜     |
+| 5   | [phase-5-frontend.md](phase-5-frontend.md)                       | Team-scoped Inertia dashboard: top-5 usage, projected overage, churn risk                         | 0.5 d | ✅     |
 | 6   | [phase-6-polish-docs.md](phase-6-polish-docs.md)                 | Demo seeder, README (architecture/assumptions/trade-offs), full-suite verification                | 0.5 d | ⬜     |
 
 **Status legend:** ⬜ not started · 🚧 in progress · ✅ done (all acceptance criteria checked)

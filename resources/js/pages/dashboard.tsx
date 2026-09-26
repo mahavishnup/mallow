@@ -1,15 +1,32 @@
 import { Head } from '@inertiajs/react';
 import { useState } from 'react';
+import { ChurnRiskTable } from '@/components/billing/churn-risk';
+import { ProjectedOverageCard } from '@/components/billing/projected-overage';
+import { TopCustomers } from '@/components/billing/top-customers';
 import PendingInvitationsModal from '@/components/pending-invitations-modal';
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import { dashboard } from '@/routes';
-import type { DashboardInvitation } from '@/types';
+import type {
+    ChurnRiskCustomer,
+    DashboardInvitation,
+    ProjectedOverage,
+    UsageTopCustomer,
+} from '@/types';
 
 type Props = {
     pendingInvitations?: DashboardInvitation[];
+    billingMonth?: string;
+    usageTopCustomers?: UsageTopCustomer[];
+    projectedOverage?: ProjectedOverage;
+    churnRiskCustomers?: ChurnRiskCustomer[];
 };
 
-export default function Dashboard({ pendingInvitations = [] }: Props) {
+export default function Dashboard({
+    pendingInvitations = [],
+    billingMonth,
+    usageTopCustomers = [],
+    projectedOverage = { total_cents: 0, subscriptions: [] },
+    churnRiskCustomers = [],
+}: Props) {
     const [showInvitations, setShowInvitations] = useState(
         pendingInvitations.length > 0,
     );
@@ -23,20 +40,19 @@ export default function Dashboard({ pendingInvitations = [] }: Props) {
                 onOpenChange={setShowInvitations}
             />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-2xl font-semibold">Usage Insights</h1>
+                    <p className="text-sm text-muted-foreground">
+                        {billingMonth
+                            ? `Billing month ${billingMonth}`
+                            : 'Billing overview'}
+                    </p>
                 </div>
-                <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
-                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+                <div className="grid gap-4 lg:grid-cols-2">
+                    <TopCustomers customers={usageTopCustomers} />
+                    <ProjectedOverageCard projectedOverage={projectedOverage} />
                 </div>
+                <ChurnRiskTable customers={churnRiskCustomers} />
             </div>
         </>
     );
